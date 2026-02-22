@@ -173,9 +173,8 @@ export default function RecordsPage() {
 
             <div className="page-body">
                 {/* Filters */}
-                <div className="filters-bar">
+                <div className="filter-bar">
                     <select
-                        className="filter-input"
                         value={filters.branch}
                         onChange={(e) => updateFilter('branch', e.target.value)}
                     >
@@ -186,7 +185,6 @@ export default function RecordsPage() {
                     </select>
 
                     <select
-                        className="filter-input"
                         value={filters.category}
                         onChange={(e) => updateFilter('category', e.target.value)}
                     >
@@ -197,18 +195,14 @@ export default function RecordsPage() {
                     </select>
 
                     <input
-                        className="filter-input"
                         type="date"
                         value={filters.dateFrom}
                         onChange={(e) => updateFilter('dateFrom', e.target.value)}
-                        placeholder="Desde"
                     />
                     <input
-                        className="filter-input"
                         type="date"
                         value={filters.dateTo}
                         onChange={(e) => updateFilter('dateTo', e.target.value)}
-                        placeholder="Hasta"
                     />
 
                     <div className="search-input-wrapper">
