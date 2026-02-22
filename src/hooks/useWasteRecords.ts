@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
 import {
     collection,
-    query,
-    orderBy,
     onSnapshot,
     addDoc,
     deleteDoc,
@@ -17,26 +15,36 @@ export function useWasteRecords() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const q = query(collection(db, 'waste_records'), orderBy('createdAt', 'desc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map((doc) => {
-                const d = doc.data();
-                return {
-                    id: doc.id,
-                    branch: d.branch || '',
-                    category: d.category || '',
-                    code: d.code || '',
-                    inventoryNumber: d.inventoryNumber || '',
-                    description: d.description || '',
-                    date: d.date || '',
-                    value: d.value || 0,
-                    notes: d.notes || '',
-                    createdAt: d.createdAt || new Date(),
-                } as WasteRecord;
-            });
-            setRecords(data);
-            setLoading(false);
-        });
+        // Simple collection listener — no orderBy to avoid needing a composite index
+        const colRef = collection(db, 'waste_records');
+        const unsubscribe = onSnapshot(
+            colRef,
+            (snapshot) => {
+                const data = snapshot.docs.map((d) => {
+                    const raw = d.data();
+                    return {
+                        id: d.id,
+                        branch: raw.branch || '',
+                        category: raw.category || '',
+                        code: raw.code || '',
+                        inventoryNumber: raw.inventoryNumber || '',
+                        description: raw.description || '',
+                        date: raw.date || '',
+                        value: raw.value || 0,
+                        notes: raw.notes || '',
+                        createdAt: raw.createdAt || new Date(),
+                    } as WasteRecord;
+                });
+                // Sort client-side by date desc (most recent first)
+                data.sort((a, b) => b.date.localeCompare(a.date));
+                setRecords(data);
+                setLoading(false);
+            },
+            (error) => {
+                console.error('Firestore error:', error);
+                setLoading(false);
+            }
+        );
         return unsubscribe;
     }, []);
 
