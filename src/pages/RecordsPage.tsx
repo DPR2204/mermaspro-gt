@@ -6,12 +6,18 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export default function RecordsPage() {
-    const { loading, filterRecords, deleteRecord } = useWasteRecords();
+    const { records, loading, filterRecords, deleteRecord } = useWasteRecords();
     const { config } = useAppConfig();
     const [toast, setToast] = useState('');
     const [sortField, setSortField] = useState<string>('date');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-
+    const [appliedFilters, setAppliedFilters] = useState<FilterState>({
+        branch: '',
+        category: '',
+        dateFrom: '',
+        dateTo: '',
+        search: '',
+    });
     const [filters, setFilters] = useState<FilterState>({
         branch: '',
         category: '',
@@ -24,8 +30,12 @@ export default function RecordsPage() {
         setFilters((prev) => ({ ...prev, [field]: value }));
     };
 
+    const applyFilters = () => {
+        setAppliedFilters({ ...filters });
+    };
+
     const filteredRecords = useMemo(() => {
-        const filtered = filterRecords(filters);
+        const filtered = filterRecords(appliedFilters);
         return filtered.sort((a: WasteRecord, b: WasteRecord) => {
             let cmp = 0;
             if (sortField === 'date') cmp = a.date.localeCompare(b.date);
@@ -34,7 +44,7 @@ export default function RecordsPage() {
             else if (sortField === 'category') cmp = a.category.localeCompare(b.category);
             return sortDir === 'desc' ? -cmp : cmp;
         });
-    }, [filterRecords, filters, sortField, sortDir]);
+    }, [filterRecords, appliedFilters, sortField, sortDir]);
 
     const totalValue = useMemo(
         () => filteredRecords.reduce((sum, r) => sum + r.value, 0),
@@ -79,11 +89,11 @@ export default function RecordsPage() {
         doc.setTextColor(100);
 
         const filterParts: string[] = [];
-        if (filters.branch) filterParts.push(`Sucursal: ${filters.branch}`);
-        if (filters.category) filterParts.push(`Categoría: ${filters.category}`);
-        if (filters.dateFrom) filterParts.push(`Desde: ${filters.dateFrom}`);
-        if (filters.dateTo) filterParts.push(`Hasta: ${filters.dateTo}`);
-        if (filters.search) filterParts.push(`Búsqueda: ${filters.search}`);
+        if (appliedFilters.branch) filterParts.push(`Sucursal: ${appliedFilters.branch}`);
+        if (appliedFilters.category) filterParts.push(`Categoría: ${appliedFilters.category}`);
+        if (appliedFilters.dateFrom) filterParts.push(`Desde: ${appliedFilters.dateFrom}`);
+        if (appliedFilters.dateTo) filterParts.push(`Hasta: ${appliedFilters.dateTo}`);
+        if (appliedFilters.search) filterParts.push(`Búsqueda: ${appliedFilters.search}`);
 
         const filterText = filterParts.length > 0 ? filterParts.join(' | ') : 'Sin filtros aplicados';
         doc.text(filterText, 14, 37);
@@ -164,7 +174,9 @@ export default function RecordsPage() {
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Registros</h1>
-                    <p className="page-subtitle">{filteredRecords.length} registros encontrados</p>
+                    <p className="page-subtitle">
+                        {filteredRecords.length} de {records.length} registros
+                    </p>
                 </div>
                 <button className="btn btn-primary" onClick={exportPDF}>
                     📄 Exportar PDF
@@ -216,10 +228,18 @@ export default function RecordsPage() {
                         />
                     </div>
 
-                    {(filters.branch || filters.category || filters.dateFrom || filters.dateTo || filters.search) && (
+                    <button className="btn btn-primary btn-sm" onClick={applyFilters}>
+                        🔍 Buscar
+                    </button>
+
+                    {(appliedFilters.branch || appliedFilters.category || appliedFilters.dateFrom || appliedFilters.dateTo || appliedFilters.search) && (
                         <button
                             className="btn btn-ghost btn-sm"
-                            onClick={() => setFilters({ branch: '', category: '', dateFrom: '', dateTo: '', search: '' })}
+                            onClick={() => {
+                                const empty = { branch: '', category: '', dateFrom: '', dateTo: '', search: '' };
+                                setFilters(empty);
+                                setAppliedFilters(empty);
+                            }}
                         >
                             ✕ Limpiar filtros
                         </button>

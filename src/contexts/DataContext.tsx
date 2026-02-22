@@ -80,7 +80,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 });
                 data.sort((a, b) => b.date.localeCompare(a.date));
                 setRecords(data);
-                setRecordsLoading(false);
+                // Only stop loading when we have data OR confirmed server response
+                // Prevents showing empty table while cache is empty and server data is still loading
+                if (data.length > 0 || !snapshot.metadata.fromCache) {
+                    setRecordsLoading(false);
+                }
             },
             (error) => {
                 console.error('Firestore waste_records error:', error);
@@ -102,10 +106,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                     monthlySales: data.monthlySales || DEFAULT_CONFIG.monthlySales,
                     wasteThreshold: data.wasteThreshold ?? DEFAULT_CONFIG.wasteThreshold,
                 });
-            } else {
+                setConfigLoading(false);
+            } else if (!snap.metadata.fromCache) {
                 setDoc(docRef, DEFAULT_CONFIG);
+                setConfigLoading(false);
             }
-            setConfigLoading(false);
         });
         return unsubscribe;
     }, []);
