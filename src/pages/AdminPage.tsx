@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAppConfig } from '../hooks/useAppConfig';
 
 export default function AdminPage() {
@@ -6,7 +6,8 @@ export default function AdminPage() {
     const [toast, setToast] = useState('');
     const [newCategory, setNewCategory] = useState('');
     const [newBranch, setNewBranch] = useState('');
-    const [budgetEdits, setBudgetEdits] = useState<Record<string, number>>({});
+    const [salesEdits, setSalesEdits] = useState<Record<string, number>>({});
+    const [thresholdEdit, setThresholdEdit] = useState<number | null>(null);
 
     const showToast = (msg: string) => {
         setToast(msg);
@@ -39,8 +40,8 @@ export default function AdminPage() {
             return;
         }
         const updatedBranches = [...config.branches, newBranch.trim()];
-        const updatedLimits = { ...config.budgetLimits, [newBranch.trim()]: 5000 };
-        await updateConfig({ branches: updatedBranches, budgetLimits: updatedLimits });
+        const updatedSales = { ...config.monthlySales, [newBranch.trim()]: 0 };
+        await updateConfig({ branches: updatedBranches, monthlySales: updatedSales });
         setNewBranch('');
         showToast('✅ Sucursal agregada');
     };
@@ -48,30 +49,34 @@ export default function AdminPage() {
     const removeBranch = async (branch: string) => {
         if (!confirm(`¿Eliminar la sucursal "${branch}"? Esto no elimina los registros existentes.`)) return;
         const updatedBranches = config.branches.filter((b) => b !== branch);
-        const updatedLimits = { ...config.budgetLimits };
-        delete updatedLimits[branch];
-        await updateConfig({ branches: updatedBranches, budgetLimits: updatedLimits });
+        const updatedSales = { ...config.monthlySales };
+        delete updatedSales[branch];
+        await updateConfig({ branches: updatedBranches, monthlySales: updatedSales });
         showToast('🗑️ Sucursal eliminada');
     };
 
-    // --- Budget Limits ---
-    const handleBudgetChange = (branch: string, value: string) => {
-        setBudgetEdits((prev) => ({ ...prev, [branch]: parseFloat(value) || 0 }));
+    // --- Monthly Sales ---
+    const handleSalesChange = (branch: string, value: string) => {
+        setSalesEdits((prev) => ({ ...prev, [branch]: parseFloat(value) || 0 }));
     };
 
-    const saveBudgets = async () => {
-        const updatedLimits = { ...config.budgetLimits, ...budgetEdits };
-        await updateConfig({ budgetLimits: updatedLimits });
-        setBudgetEdits({});
-        showToast('✅ Presupuestos actualizados');
+    const saveSalesConfig = async () => {
+        const updatedSales = { ...config.monthlySales, ...salesEdits };
+        const threshold = thresholdEdit !== null ? thresholdEdit / 100 : config.wasteThreshold;
+        await updateConfig({ monthlySales: updatedSales, wasteThreshold: threshold });
+        setSalesEdits({});
+        setThresholdEdit(null);
+        showToast('✅ Configuración de ventas actualizada');
     };
+
+    const currentThreshold = thresholdEdit !== null ? thresholdEdit : config.wasteThreshold * 100;
 
     return (
         <>
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Administración</h1>
-                    <p className="page-subtitle">Configura categorías, sucursales y presupuestos</p>
+                    <p className="page-subtitle">Configura categorías, sucursales y control de mermas</p>
                 </div>
             </div>
 
@@ -144,15 +149,48 @@ export default function AdminPage() {
                     </div>
                 </div>
 
-                {/* Budget Limits */}
+                {/* Monthly Sales & Threshold */}
                 <div className="card mt-24" style={{ maxWidth: 900 }}>
                     <div className="config-section">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <h3 className="config-section-title" style={{ marginBottom: 0 }}>💰 Presupuestos mensuales</h3>
-                            <button className="btn btn-primary btn-sm" onClick={saveBudgets}>
+                            <div>
+                                <h3 className="config-section-title" style={{ marginBottom: 4 }}>📊 Ventas mensuales por sucursal</h3>
+                                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-tertiary)', margin: 0 }}>
+                                    Ingresa las ventas del mes para calcular el porcentaje de merma
+                                </p>
+                            </div>
+                            <button className="btn btn-primary btn-sm" onClick={saveSalesConfig}>
                                 💾 Guardar cambios
                             </button>
                         </div>
+
+                        {/* Threshold config */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: '12px 16px', borderRadius: 8,
+                            background: 'var(--color-bg-hover)', marginBottom: 16
+                        }}>
+                            <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+                                Umbral máximo de merma:
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <input
+                                    className="budget-config-input"
+                                    type="number"
+                                    step="0.5"
+                                    min="0"
+                                    max="100"
+                                    value={currentThreshold}
+                                    onChange={(e) => setThresholdEdit(parseFloat(e.target.value) || 0)}
+                                    style={{ width: 70 }}
+                                />
+                                <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-tertiary)' }}>%</span>
+                            </div>
+                            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-tertiary)' }}>
+                                (las mermas no deben superar este porcentaje de las ventas)
+                            </span>
+                        </div>
+
                         <div className="budget-config-list">
                             {config.branches.map((branch) => (
                                 <div className="budget-config-item" key={branch}>
@@ -164,8 +202,8 @@ export default function AdminPage() {
                                             type="number"
                                             step="100"
                                             min="0"
-                                            value={budgetEdits[branch] ?? config.budgetLimits[branch] ?? 0}
-                                            onChange={(e) => handleBudgetChange(branch, e.target.value)}
+                                            value={salesEdits[branch] ?? config.monthlySales[branch] ?? 0}
+                                            onChange={(e) => handleSalesChange(branch, e.target.value)}
                                         />
                                     </div>
                                 </div>

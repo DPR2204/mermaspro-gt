@@ -16,14 +16,16 @@ export interface WasteRecord {
 export interface AppConfig {
     categories: string[];
     branches: string[];
-    budgetLimits: Record<string, number>;
+    monthlySales: Record<string, number>;
+    wasteThreshold: number; // e.g. 0.03 = 3%
 }
 
 export interface BudgetStatus {
     branch: string;
-    limit: number;
-    spent: number;
+    sales: number;
+    waste: number;
     percentage: number;
+    threshold: number;
     status: 'safe' | 'warning' | 'danger';
 }
 

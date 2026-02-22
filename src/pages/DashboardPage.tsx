@@ -67,23 +67,30 @@ export default function DashboardPage() {
             }));
     }, [records]);
 
+    const thresholdPct = config.wasteThreshold * 100; // e.g. 3
+
     const budgetStatuses: BudgetStatus[] = useMemo(() => {
         return config.branches.map((branch) => {
-            const limit = config.budgetLimits[branch] || 0;
-            const spent = currentMonthRecords
+            const sales = config.monthlySales[branch] || 0;
+            const waste = currentMonthRecords
                 .filter((r) => r.branch === branch)
                 .reduce((sum, r) => sum + r.value, 0);
-            const percentage = limit > 0 ? Math.round((spent / limit) * 100) : 0;
+            const percentage = sales > 0 ? Math.round((waste / sales) * 10000) / 100 : 0;
             let status: 'safe' | 'warning' | 'danger' = 'safe';
-            if (percentage >= 100) status = 'danger';
-            else if (percentage >= 80) status = 'warning';
-            return { branch, limit, spent: Math.round(spent * 100) / 100, percentage, status };
+            if (percentage >= thresholdPct) status = 'danger';
+            else if (percentage >= thresholdPct * 0.8) status = 'warning';
+            return { branch, sales, waste: Math.round(waste * 100) / 100, percentage, threshold: thresholdPct, status };
         });
-    }, [config, currentMonthRecords]);
+    }, [config, currentMonthRecords, thresholdPct]);
+
+    // Global stats
+    const totalSales = Object.values(config.monthlySales).reduce((sum, v) => sum + v, 0);
+    const globalWastePct = totalSales > 0 ? Math.round((totalThisMonth / totalSales) * 10000) / 100 : 0;
+    const globalStatus = globalWastePct >= thresholdPct ? 'danger' : globalWastePct >= thresholdPct * 0.8 ? 'warning' : 'safe';
 
     const avgPerRecord = totalRecords > 0 ? (totalThisMonth / totalRecords).toFixed(2) : '0.00';
 
-    const branchesOverBudget = budgetStatuses.filter((b) => b.status === 'danger').length;
+
 
     if (loading) {
         return (
@@ -125,10 +132,10 @@ export default function DashboardPage() {
                     </div>
                     <div className="stat-card">
                         <div className="stat-card-icon red">⚠️</div>
-                        <div className="stat-card-label">Sucursales sobre presupuesto</div>
-                        <div className="stat-card-value">{branchesOverBudget}</div>
-                        {branchesOverBudget > 0 && (
-                            <span className="stat-card-change up">¡Atención requerida!</span>
+                        <div className="stat-card-label">Merma global vs ventas</div>
+                        <div className="stat-card-value">{globalWastePct}%</div>
+                        {globalWastePct >= thresholdPct && (
+                            <span className="stat-card-change up">¡Supera el {thresholdPct}%!</span>
                         )}
                     </div>
                 </div>
@@ -205,7 +212,7 @@ export default function DashboardPage() {
                                     cy="50%"
                                     innerRadius={60}
                                     outerRadius={100}
-                                    paddingAngle={3}
+                                    paddingAngle={1}
                                     dataKey="total"
                                     nameKey="category"
                                     label={({ category, percent }: any) =>
@@ -226,30 +233,50 @@ export default function DashboardPage() {
                     </div>
                 )}
 
-                {/* Budget Status */}
+                {/* Mermas vs Ventas */}
                 <div className="card mb-24">
                     <div className="card-header">
-                        <h3 className="card-title">Control de presupuesto</h3>
+                        <h3 className="card-title">Mermas vs Ventas (máx. {thresholdPct}%)</h3>
                         <span className="card-subtitle">
-                            Límites mensuales por sucursal — {new Date().toLocaleDateString('es-GT', { month: 'long', year: 'numeric' })}
+                            Porcentaje de merma sobre ventas por sucursal — {new Date().toLocaleDateString('es-GT', { month: 'long', year: 'numeric' })}
                         </span>
                     </div>
+
+                    {/* Global summary bar */}
+                    <div className="budget-card" style={{ marginBottom: 16, border: '2px solid var(--color-border)' }}>
+                        <div className="budget-header">
+                            <span className="budget-branch">🌐 Global</span>
+                            <span className="budget-values">
+                                Merma: Q{totalThisMonth.toLocaleString('es-GT', { minimumFractionDigits: 2 })} · Ventas: Q{totalSales.toLocaleString('es-GT', { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                        <div className="budget-bar-track">
+                            <div
+                                className={`budget-bar-fill ${globalStatus}`}
+                                style={{ width: `${Math.min((globalWastePct / thresholdPct) * 100, 100)}%` }}
+                            />
+                        </div>
+                        <div className={`budget-percentage ${globalStatus}`}>{globalWastePct}% de {thresholdPct}% permitido</div>
+                    </div>
+
                     <div className="budget-grid">
                         {budgetStatuses.map((b) => (
                             <div className="budget-card" key={b.branch}>
                                 <div className="budget-header">
                                     <span className="budget-branch">{b.branch}</span>
                                     <span className="budget-values">
-                                        Q{b.spent.toLocaleString()} / Q{b.limit.toLocaleString()}
+                                        {b.sales > 0 ? `Q${b.waste.toLocaleString()} / Q${b.sales.toLocaleString()}` : 'Sin ventas registradas'}
                                     </span>
                                 </div>
                                 <div className="budget-bar-track">
                                     <div
                                         className={`budget-bar-fill ${b.status}`}
-                                        style={{ width: `${Math.min(b.percentage, 100)}%` }}
+                                        style={{ width: `${b.sales > 0 ? Math.min((b.percentage / thresholdPct) * 100, 100) : 0}%` }}
                                     />
                                 </div>
-                                <div className={`budget-percentage ${b.status}`}>{b.percentage}%</div>
+                                <div className={`budget-percentage ${b.status}`}>
+                                    {b.sales > 0 ? `${b.percentage}% de ${thresholdPct}% permitido` : '—'}
+                                </div>
                             </div>
                         ))}
                     </div>

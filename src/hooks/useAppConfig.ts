@@ -18,15 +18,16 @@ const DEFAULT_CONFIG: AppConfig = {
         'Atitlán Café Bar',
         'Bodega Central',
     ],
-    budgetLimits: {
-        'Atitlán Central': 5000,
-        'Atitlán Mirador': 5000,
-        'Atitlán San Juan': 5000,
-        'Atitlán Santiago': 5000,
-        'Atitlán Café': 3000,
-        'Atitlán Café Bar': 3000,
-        'Bodega Central': 8000,
+    monthlySales: {
+        'Atitlán Central': 0,
+        'Atitlán Mirador': 0,
+        'Atitlán San Juan': 0,
+        'Atitlán Santiago': 0,
+        'Atitlán Café': 0,
+        'Atitlán Café Bar': 0,
+        'Bodega Central': 0,
     },
+    wasteThreshold: 0.03, // 3%
 };
 
 export function useAppConfig() {
@@ -41,7 +42,8 @@ export function useAppConfig() {
                 setConfig({
                     categories: data.categories || DEFAULT_CONFIG.categories,
                     branches: data.branches || DEFAULT_CONFIG.branches,
-                    budgetLimits: data.budgetLimits || DEFAULT_CONFIG.budgetLimits,
+                    monthlySales: data.monthlySales || DEFAULT_CONFIG.monthlySales,
+                    wasteThreshold: data.wasteThreshold ?? DEFAULT_CONFIG.wasteThreshold,
                 });
             } else {
                 // Initialize with defaults if doc doesn't exist
