@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -16,7 +15,7 @@ const navItems = [
     { path: '/admin', label: 'Administración', icon: '⚙️' },
 ];
 
-export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
+export default function Sidebar({ collapsed, mobileOpen, onMobileClose }: SidebarProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const { signOut, user } = useAuth();
