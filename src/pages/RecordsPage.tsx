@@ -215,6 +215,15 @@ export default function RecordsPage() {
                             placeholder="Buscar por código, descripción..."
                         />
                     </div>
+
+                    {(filters.branch || filters.category || filters.dateFrom || filters.dateTo || filters.search) && (
+                        <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => setFilters({ branch: '', category: '', dateFrom: '', dateTo: '', search: '' })}
+                        >
+                            ✕ Limpiar filtros
+                        </button>
+                    )}
                 </div>
 
                 {/* Summary bar */}
